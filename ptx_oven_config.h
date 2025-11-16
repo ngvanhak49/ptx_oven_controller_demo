@@ -30,6 +30,7 @@ typedef struct {
     /* Ignition safety parameters */
     uint8_t  max_ignition_attempts;   /**< Maximum number of ignition retry attempts (default: 3) */
     uint32_t purge_time_ms;           /**< Gas purge time after failed ignition (default: 2500ms) */
+    float    flame_detect_temp_rise_c; /**< Minimum temperature rise to detect flame (default: 2.0°C) */
 } ptx_oven_config_t;
 
 /**
@@ -164,6 +165,18 @@ void ptx_oven_set_purge_time_ms(uint32_t purge_ms);
  * @return Current purge time
  */
 uint32_t ptx_oven_get_purge_time_ms(void);
+
+/**
+ * @brief Set flame detection temperature rise threshold (°C)
+ * @param temp_rise_c Minimum temperature rise to confirm ignition
+ */
+void ptx_oven_set_flame_detect_temp_rise_c(float temp_rise_c);
+
+/**
+ * @brief Get flame detection temperature rise threshold (°C)
+ * @return Current flame detection threshold
+ */
+float ptx_oven_get_flame_detect_temp_rise_c(void);
 
 #ifdef __cplusplus
 }

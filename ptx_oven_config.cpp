@@ -16,7 +16,8 @@ static ptx_oven_config_t pti_oven_config = {
     .temp_target_c          = 180.0f, /* target temperature */
     .temp_delta_c           = 5.0f,   /* hysteresis half-band */
     .max_ignition_attempts  = 3U,     /* 3 ignition retry attempts */
-    .purge_time_ms          = 2500U   /* 2.5 seconds purge after failed ignition */
+    .purge_time_ms          = 2500U,  /* 2.5 seconds purge after failed ignition */
+    .flame_detect_temp_rise_c = 2.0f  /* 2°C temperature rise to detect flame */
 };
 
 const ptx_oven_config_t* ptx_oven_get_config(void) {
@@ -40,6 +41,7 @@ void ptx_oven_reset_config_to_defaults(void) {
     pti_oven_config.temp_delta_c           = 2.0f;
     pti_oven_config.max_ignition_attempts  = 3U;
     pti_oven_config.purge_time_ms          = 2500U;
+    pti_oven_config.flame_detect_temp_rise_c = 2.0f;
 }
 
 /* Individual parameter setters */
@@ -120,4 +122,14 @@ void ptx_oven_set_purge_time_ms(uint32_t purge_ms) {
 
 uint32_t ptx_oven_get_purge_time_ms(void) {
     return pti_oven_config.purge_time_ms;
+}
+
+void ptx_oven_set_flame_detect_temp_rise_c(float temp_rise_c) {
+    if (temp_rise_c > 0.0f && temp_rise_c <= 50.0f) {
+        pti_oven_config.flame_detect_temp_rise_c = temp_rise_c;
+    }
+}
+
+float ptx_oven_get_flame_detect_temp_rise_c(void) {
+    return pti_oven_config.flame_detect_temp_rise_c;
 }

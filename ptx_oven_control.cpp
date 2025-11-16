@@ -151,7 +151,7 @@ static void ptx_update_heating(uint32_t now_ms) {
                 float temp_rise = pti_status.temperature_c - pti_temp_at_ignition_start;
 
 #if (PTX_FLAME_DETECT_ENABLED)
-                if (temp_rise > 5.0f) {
+                if (temp_rise > cfg->flame_detect_temp_rise_c) {
                     /* Flame detected - successful ignition */
                     pti_status.igniter_on = false;
                     pti_status.state = PTX_HEATING_STATE_HEATING;
