@@ -83,8 +83,8 @@ TEST_F(OvenControlTest, HysteresisControl) {
     EXPECT_TRUE(st->gas_on) << "Gas should stay ON after ignition";
     EXPECT_FALSE(st->igniter_on) << "Igniter should turn OFF after ignition";
 
-    // Move above OFF threshold (182°C) - need to fill filter with new values
-    mock_set_signal_mv(mv_for_temp(5000, 185.0f));
+    // Move above OFF threshold (185°C) - need to fill filter with new values
+    mock_set_signal_mv(mv_for_temp(5000, 186.0f));
     // Need to completely replace old values in median filter (window size=5)
     // After 5 updates, all old values should be replaced
     for (int i = 0; i < 15; ++i) {  // Extra updates to ensure filter fully updates

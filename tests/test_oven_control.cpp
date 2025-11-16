@@ -75,8 +75,8 @@ static int test_hysteresis_turn_off() {
     ptx_oven_control_update();
 
     // Move above OFF threshold - need to replace all values in filter
-    mock_set_signal_mv(mv_for_temp(5000, 185.0f));
-    for (int i = 0; i < 10; ++i) {
+    mock_set_signal_mv(mv_for_temp(5000, 186.0f));
+    for (int i = 0; i < 15; ++i) {
         mock_advance_ms(50);
         ptx_oven_control_update();
     }
