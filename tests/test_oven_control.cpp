@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <math.h>
 #include "ptx_oven_control.h"
-#include "ptx_oven_control.h"
 #include "tests/mocks/mock_api.h"
 
 #define ASSERT_TRUE(msg, cond) do { if(!(cond)) { printf("ASSERT_TRUE failed: %s\n", msg); return 1; } } while(0)
