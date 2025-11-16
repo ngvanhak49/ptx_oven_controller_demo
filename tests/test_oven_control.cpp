@@ -65,6 +65,10 @@ static int test_hysteresis_turn_off() {
     mock_set_signal_mv(mv_for_temp(5000, 160.0f));
     ptx_oven_control_update();
 
+    // Wait for ignition to complete
+    mock_advance_ms(5000);
+    ptx_oven_control_update();
+
     // Move above OFF threshold
     mock_set_signal_mv(mv_for_temp(5000, 185.0f));
     ptx_oven_control_update();
@@ -107,7 +111,9 @@ static int test_auto_resume_after_valid_window() {
     mock_set_vref_mv(5000);
     mock_set_signal_mv(mv_for_temp(5000, 160.0f));
 
-    // Start heating
+    // Start heating and complete ignition
+    ptx_oven_control_update();
+    mock_advance_ms(5000); // Wait for ignition to complete
     ptx_oven_control_update();
 
     // Trigger sensor fault by invalid vref for >1s

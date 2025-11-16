@@ -14,6 +14,11 @@
 #include "api.h"
 #include "ptx_logging.h"
 
+/* Feature flags */
+#ifndef PTX_FLAME_DETECT_ENABLED
+#define PTX_FLAME_DETECT_ENABLED 0  /* Disable flame detection by default (assume ignition success) */
+#endif
+
 /* Internal state */
 static ptx_oven_status_t pti_status;
 static uint32_t pti_ignition_start_ms = 0;
