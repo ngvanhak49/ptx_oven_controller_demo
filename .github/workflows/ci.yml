@@ -17,6 +17,9 @@ jobs:
             -I. -Itests/stubs \
             tests/mocks/mock_api.cpp \
             tests/mocks/mock_logging.cpp \
+            ptx_oven_config.cpp \
+            ptx_sensor_filter.cpp \
+            ptx_actuator.cpp \
             ptx_oven_control.cpp \
             tests/test_oven_control.cpp \
             -o tests/run_tests

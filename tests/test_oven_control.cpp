@@ -21,14 +21,14 @@ static int test_door_open_shutdown() {
     mock_set_signal_mv(mv_for_temp(5000, 160.0f)); // below ON threshold
 
     ptx_oven_control_update();
-    const ptx_oven_status_t* st = ptx_get_oven_status();
+    const ptx_oven_status_t* st = ptx_oven_get_status();
     ASSERT_TRUE("gas should start ON", st->gas_on);
     ASSERT_TRUE("igniter should start ON", st->igniter_on);
 
     // Open door -> immediate shutdown on next update
     ptx_oven_set_door_state(true);
     ptx_oven_control_update();
-    st = ptx_get_oven_status();
+    st = ptx_oven_get_status();
     ASSERT_FALSE("gas off on door open", st->gas_on);
     ASSERT_FALSE("igniter off on door open", st->igniter_on);
     ASSERT_FALSE("output gas off", mock_get_gas_output());
@@ -44,12 +44,12 @@ static int test_ignition_timing() {
     mock_set_signal_mv(mv_for_temp(5000, 160.0f));
 
     ptx_oven_control_update();
-    const ptx_oven_status_t* st = ptx_get_oven_status();
+    const ptx_oven_status_t* st = ptx_oven_get_status();
     ASSERT_TRUE("igniter ON during ignition", st->igniter_on);
 
     mock_advance_ms(5000);
     ptx_oven_control_update();
-    st = ptx_get_oven_status();
+    st = ptx_oven_get_status();
     ASSERT_TRUE("gas stays ON after ignition", st->gas_on);
     ASSERT_FALSE("igniter OFF after 5s", st->igniter_on);
     return 0;
@@ -69,7 +69,7 @@ static int test_hysteresis_turn_off() {
     mock_set_signal_mv(mv_for_temp(5000, 185.0f));
     ptx_oven_control_update();
 
-    const ptx_oven_status_t* st = ptx_get_oven_status();
+    const ptx_oven_status_t* st = ptx_oven_get_status();
     ASSERT_FALSE("gas OFF above OFF threshold", st->gas_on);
     ASSERT_FALSE("igniter OFF above OFF threshold", st->igniter_on);
     return 0;
@@ -93,7 +93,7 @@ static int test_sensor_fault_vref_range() {
         ptx_oven_control_update();
     }
 
-    const ptx_oven_status_t* st = ptx_get_oven_status();
+    const ptx_oven_status_t* st = ptx_oven_get_status();
     ASSERT_TRUE("sensor fault latched after 1s", st->sensor_fault);
     ASSERT_FALSE("gas OFF on sensor fault", st->gas_on);
     ASSERT_FALSE("igniter OFF on sensor fault", st->igniter_on);
@@ -126,7 +126,7 @@ static int test_auto_resume_after_valid_window() {
         ptx_oven_control_update();
     }
 
-    const ptx_oven_status_t* st = ptx_get_oven_status();
+    const ptx_oven_status_t* st = ptx_oven_get_status();
     ASSERT_FALSE("sensor fault cleared after 3s valid", st->sensor_fault);
     // Since temperature is below ON threshold, controller should auto-reignite
     ASSERT_TRUE("gas ON after resume", st->gas_on);

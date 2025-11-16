@@ -30,6 +30,12 @@ extern "C" void set_output(output_t output, bool output_state) {
     else if (output == IGNITER) pti_igniter = output_state;
 }
 
+extern "C" bool read_output(output_t output) {
+    if (output == GAS_VALVE) return pti_gas;
+    if (output == IGNITER) return pti_igniter;
+    return false;
+}
+
 extern "C" uint32_t get_millis() { return (uint32_t)pti_now_ms; }
 
 extern "C" void serial_printf(const char * format, ...) {

@@ -9,6 +9,10 @@
 
 #include <Arduino.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @brief Log macro with automatic file and line detection
  * @param msg Message string to log
@@ -51,5 +55,9 @@ void ptx_logf(const char* file, int line, const char* format, ...);
  * @return Pointer to filename portion
  */
 const char* ptx_get_filename(const char* path);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // PTX_LOGGING_H

@@ -51,6 +51,9 @@ void door_sensor_interrupt_handler(bool voltage_high);
 // true for on, false for off
 void set_output(output_t output, bool output_state);
 
+// read current output state
+bool read_output(output_t output);
+
 // returns the current number of milliseconds since the Arduino board began running
 uint32_t get_millis();
 

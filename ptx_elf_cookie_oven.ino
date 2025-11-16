@@ -8,6 +8,7 @@ Then check `notes.md`.
 #include "api.h"
 #include "ptx_logging.h"
 #include "ptx_oven_control.h"
+#include "ptx_actuator.h"
 
 void setup() {
   ptx_log_init();
@@ -23,8 +24,7 @@ void door_sensor_interrupt_handler(bool voltage_high)
 {
   // TODO: add small filtering for stability if needed
   if (voltage_high) {
-    set_output(GAS_VALVE, false);
-    set_output(IGNITER, false);
+    ptx_actuator_emergency_stop();
   }
   // Propagate state to controller; controller loop will handle any logging.
   ptx_oven_set_door_state(voltage_high);

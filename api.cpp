@@ -53,6 +53,20 @@ void set_output(output_t output, bool output_state)
   }
 }
 
+// read current output state
+bool read_output(output_t output)
+{
+  if (output == GAS_VALVE)
+  {
+    return digitalRead(2) == HIGH;
+  }
+  else if (output == IGNITER)
+  {
+    return digitalRead(7) == HIGH;
+  }
+  return false;
+}
+
 uint32_t get_millis()
 {
   return millis();
