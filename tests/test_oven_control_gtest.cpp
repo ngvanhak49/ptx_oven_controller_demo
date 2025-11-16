@@ -66,7 +66,13 @@ TEST_F(OvenControlTest, HysteresisControl) {
 
     // Start heating (below ON threshold: 178°C)
     mock_set_signal_mv(mv_for_temp(5000, 160.0f));
-    ptx_oven_control_update();
+    
+    // Fill median filter buffer first (need 5 samples)
+    for (int i = 0; i < 5; ++i) {
+        ptx_oven_control_update();
+        mock_advance_ms(50);
+    }
+    
     const ptx_oven_status_t* st = ptx_oven_get_status();
     EXPECT_TRUE(st->gas_on) << "Heating should start below ON threshold";
 
@@ -77,10 +83,10 @@ TEST_F(OvenControlTest, HysteresisControl) {
     EXPECT_TRUE(st->gas_on) << "Gas should stay ON after ignition";
     EXPECT_FALSE(st->igniter_on) << "Igniter should turn OFF after ignition";
 
-    // Move above OFF threshold (182°C) - need multiple updates for median filter
+    // Move above OFF threshold (182°C) - need to fill filter with new values
     mock_set_signal_mv(mv_for_temp(5000, 185.0f));
-    // Need more updates to ensure median filter outputs new value and control reacts
-    for (int i = 0; i < 10; ++i) {  // Extra updates to ensure filter and control both process
+    // Need to completely replace old values in median filter
+    for (int i = 0; i < 10; ++i) {  // Extra updates to ensure filter fully updates
         mock_advance_ms(50);
         ptx_oven_control_update();
     }

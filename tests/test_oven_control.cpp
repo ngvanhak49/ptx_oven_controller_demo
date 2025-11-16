@@ -63,15 +63,20 @@ static int test_hysteresis_turn_off() {
 
     // Start heating (below ON threshold)
     mock_set_signal_mv(mv_for_temp(5000, 160.0f));
-    ptx_oven_control_update();
+    
+    // Fill median filter buffer first
+    for (int i = 0; i < 5; ++i) {
+        ptx_oven_control_update();
+        mock_advance_ms(50);
+    }
 
     // Wait for ignition to complete
     mock_advance_ms(5000);
     ptx_oven_control_update();
 
-    // Move above OFF threshold - need multiple updates for median filter
+    // Move above OFF threshold - need to replace all values in filter
     mock_set_signal_mv(mv_for_temp(5000, 185.0f));
-    for (int i = 0; i < 10; ++i) {  // Extra updates to ensure filter outputs new value
+    for (int i = 0; i < 10; ++i) {
         mock_advance_ms(50);
         ptx_oven_control_update();
     }
