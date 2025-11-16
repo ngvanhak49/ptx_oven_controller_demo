@@ -87,7 +87,8 @@ static int test_sensor_fault_vref_range() {
 
     // Now make vref invalid and hold for >1s
     mock_set_vref_mv(4000); // below 4.5V
-    for (int i = 0; i < 11; ++i) { // 11 * 100ms = 1100ms
+    ptx_oven_control_update(); // first update with bad vref starts timer at t=0
+    for (int i = 0; i < 12; ++i) { // 12 * 100ms = 1200ms to ensure > 1000ms elapsed
         mock_advance_ms(100);
         ptx_oven_control_update();
     }
@@ -111,7 +112,11 @@ static int test_auto_resume_after_valid_window() {
 
     // Trigger sensor fault by invalid vref for >1s
     mock_set_vref_mv(4000);
-    for (int i = 0; i < 11; ++i) { mock_advance_ms(100); ptx_oven_control_update(); }
+    ptx_oven_control_update(); // starts timer
+    for (int i = 0; i < 12; ++i) { // 1200ms elapsed > 1000ms threshold
+        mock_advance_ms(100);
+        ptx_oven_control_update();
+    }
 
     // Restore valid vref and wait 3s valid window
     mock_set_vref_mv(5000);
