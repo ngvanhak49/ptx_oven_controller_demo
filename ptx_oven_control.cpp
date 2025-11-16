@@ -15,6 +15,8 @@
 #define PTX_PERIODIC_LOG_MS        1000U
 #define PTX_VREF_MIN               4.5f
 #define PTX_VREF_MAX               5.5f
+#define PTX_SENSOR_FAULT_WINDOW_MS 1000U   /* out-of-range must persist longer than this */
+#define PTX_AUTO_RESUME_DELAY_MS   3000U   /* valid window required before auto-resume */
 #define PTX_DOOR_OPEN_THRESHOLD_MV 2500U   /* legacy analog threshold (not used in interrupt mode) */
 
 /* Output control macros for clarity */
@@ -31,23 +33,60 @@ static ptx_oven_status_t pti_status;
 static uint32_t pti_ignition_start_ms = 0;
 static uint32_t pti_last_log_ms = 0;
 
+/* Timed sensor fault management */
+static uint32_t pti_out_of_range_since_ms = 0;   /* 0 means not currently out of range */
+static uint32_t pti_valid_since_ms = 0;          /* 0 means not in continuous valid window */
+
 static bool ptx_read_door_open(void) {
-    /* Door state now provided by external interrupt handler via setter. */
     return pti_status.door_open;
 }
 
-static void ptx_eval_sensor_faults(float vref_mv, float signal_mv) {
+static void ptx_eval_sensor_faults_with_timing(uint32_t now_ms, float vref_mv, float signal_mv) {
+    /* Update instantaneous readings */
     pti_status.vref_volts   = vref_mv / 1000.0f;
     pti_status.signal_volts = signal_mv / 1000.0f;
 
-    pti_status.vref_fault   = (pti_status.vref_volts < PTX_VREF_MIN) || (pti_status.vref_volts > PTX_VREF_MAX);
+    /* Instantaneous violations (not latched) */
+    bool vref_bad = (pti_status.vref_volts < PTX_VREF_MIN) || (pti_status.vref_volts > PTX_VREF_MAX);
 
-    /* Signal valid only if within [10%, 90%] of vref (inclusive). */
     float lo = 0.10f * vref_mv;
     float hi = 0.90f * vref_mv;
-    pti_status.signal_fault = (signal_mv < lo) || (signal_mv > hi);
+    bool signal_bad = (signal_mv < lo) || (signal_mv > hi);
 
-    pti_status.sensor_fault = pti_status.vref_fault || pti_status.signal_fault;
+    pti_status.vref_fault = vref_bad;        /* expose instantaneous state */
+    pti_status.signal_fault = signal_bad;
+
+    bool out_of_range = vref_bad || signal_bad;
+
+    if (out_of_range) {
+        /* Reset valid window and start/continue out-of-range window */
+        pti_valid_since_ms = 0;
+        if (pti_out_of_range_since_ms == 0) {
+            pti_out_of_range_since_ms = now_ms;
+        }
+        /* Latch fault only if persists beyond window */
+        if (!pti_status.sensor_fault && (now_ms - pti_out_of_range_since_ms) > PTX_SENSOR_FAULT_WINDOW_MS) {
+            pti_status.sensor_fault = true;
+            PTX_LOGF("sensor fault latched");
+        }
+    } else {
+        /* Readings are valid; clear out-of-range window */
+        pti_out_of_range_since_ms = 0;
+        if (pti_status.sensor_fault) {
+            /* If fault was latched, require continuous validity before auto-resume */
+            if (pti_valid_since_ms == 0) {
+                pti_valid_since_ms = now_ms;
+            }
+            if ((now_ms - pti_valid_since_ms) >= PTX_AUTO_RESUME_DELAY_MS) {
+                pti_status.sensor_fault = false; /* clear latched fault */
+                pti_valid_since_ms = 0;
+                PTX_LOGF("sensor fault cleared");
+            }
+        } else {
+            /* No latched fault; keep valid_since reset */
+            pti_valid_since_ms = 0;
+        }
+    }
 }
 
 static float ptx_compute_temperature(float vref_mv, float signal_mv) {
@@ -166,8 +205,8 @@ void ptx_oven_control_update(void) {
     float vref_mv   = (float)read_voltage(TEMPERATURE_SENSOR_REFERENCE);
     float signal_mv = (float)read_voltage(TEMPERATURE_SENSOR);
 
-    /* Evaluate faults first. */
-    ptx_eval_sensor_faults(vref_mv, signal_mv);
+    /* Evaluate faults with timing first. */
+    ptx_eval_sensor_faults_with_timing(now, vref_mv, signal_mv);
     pti_status.door_open = ptx_read_door_open();
 
     /* Compute temperature (for display/log); control will still be overridden on faults. */

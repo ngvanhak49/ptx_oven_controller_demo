@@ -1,6 +1,6 @@
 /**
  * @file ptx_oven_control.h
- * @brief Oven control in C-style: 180 °C target, door safety, ignition timing, sensor validation.
+ * @brief Oven control: 180 °C target, door safety, ignition timing, sensor validation.
  * @details Implements a simple bang-bang controller with hysteresis around a target temperature.
  *          Door open condition and sensor faults override all heating actions immediately.
  */
@@ -11,7 +11,7 @@
 #include <stdbool.h>
 
 /**
- * @brief Update debounced door state from external interrupt handler.
+ * @brief Update door state from external interrupt handler.
  * @param open true if door is open, false if closed.
  */
 void ptx_oven_set_door_state(bool open);
@@ -36,8 +36,7 @@ typedef struct {
     bool  gas_on;              /**< Gas valve command output. */
     bool  igniter_on;          /**< Igniter command output. */
     ptx_heating_state_t state; /**< Current heating state. */
-
-    /* Faults */
+    
     bool  vref_fault;          /**< True if vref not in [4.5, 5.5] V. */
     bool  signal_fault;        /**< True if signal not in [10%, 90%] of vref. */
     bool  sensor_fault;        /**< Aggregate: vref_fault || signal_fault. */

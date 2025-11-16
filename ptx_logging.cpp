@@ -8,9 +8,7 @@
 
 void ptx_log_init() {
     Serial.begin(115200);
-    while (!Serial) {
-        ; // Wait for Serial port to connect
-    }
+    while (!Serial) { ; }
 }
 
 const char* ptx_get_filename(const char* path) {

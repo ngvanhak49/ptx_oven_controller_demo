@@ -80,14 +80,49 @@ static int test_sensor_fault_vref_range() {
     mock_reset_time(0);
     ptx_oven_control_init();
     ptx_oven_set_door_state(false);
-    mock_set_vref_mv(4000); // below 4.5V
-    mock_set_signal_mv(mv_for_temp(4000, 160.0f));
+    mock_set_vref_mv(5000);
+    mock_set_signal_mv(mv_for_temp(5000, 160.0f));
 
+    // Start heating
     ptx_oven_control_update();
+
+    // Now make vref invalid and hold for >1s
+    mock_set_vref_mv(4000); // below 4.5V
+    for (int i = 0; i < 11; ++i) { // 11 * 100ms = 1100ms
+        mock_advance_ms(100);
+        ptx_oven_control_update();
+    }
+
     const ptx_oven_status_t* st = ptx_get_oven_status();
-    ASSERT_TRUE("sensor fault set", st->sensor_fault);
+    ASSERT_TRUE("sensor fault latched after 1s", st->sensor_fault);
     ASSERT_FALSE("gas OFF on sensor fault", st->gas_on);
     ASSERT_FALSE("igniter OFF on sensor fault", st->igniter_on);
+    return 0;
+}
+
+static int test_auto_resume_after_valid_window() {
+    mock_reset_time(0);
+    ptx_oven_control_init();
+    ptx_oven_set_door_state(false);
+    mock_set_vref_mv(5000);
+    mock_set_signal_mv(mv_for_temp(5000, 160.0f));
+
+    // Start heating
+    ptx_oven_control_update();
+
+    // Trigger sensor fault by invalid vref for >1s
+    mock_set_vref_mv(4000);
+    for (int i = 0; i < 11; ++i) { mock_advance_ms(100); ptx_oven_control_update(); }
+
+    // Restore valid vref and wait 3s valid window
+    mock_set_vref_mv(5000);
+    for (int i = 0; i < 30; ++i) { mock_advance_ms(100); ptx_oven_control_update(); }
+
+    const ptx_oven_status_t* st = ptx_get_oven_status();
+    ASSERT_FALSE("sensor fault cleared after 3s valid", st->sensor_fault);
+    // Since temperature is below ON threshold, controller should auto-reignite
+    ASSERT_TRUE("gas ON after resume", st->gas_on);
+    ASSERT_TRUE("igniter ON at ignite start after resume", st->igniter_on);
     return 0;
 }
 
@@ -97,6 +132,7 @@ int main() {
     rc |= test_ignition_timing();
     rc |= test_hysteresis_turn_off();
     rc |= test_sensor_fault_vref_range();
+    rc |= test_auto_resume_after_valid_window();
     if (rc == 0) {
         printf("All tests passed.\n");
     }
