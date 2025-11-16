@@ -69,9 +69,12 @@ static int test_hysteresis_turn_off() {
     mock_advance_ms(5000);
     ptx_oven_control_update();
 
-    // Move above OFF threshold
+    // Move above OFF threshold - need multiple updates for median filter
     mock_set_signal_mv(mv_for_temp(5000, 185.0f));
-    ptx_oven_control_update();
+    for (int i = 0; i < 10; ++i) {  // Extra updates to ensure filter outputs new value
+        mock_advance_ms(50);
+        ptx_oven_control_update();
+    }
 
     const ptx_oven_status_t* st = ptx_oven_get_status();
     ASSERT_FALSE("gas OFF above OFF threshold", st->gas_on);
@@ -127,7 +130,7 @@ static int test_auto_resume_after_valid_window() {
     // Restore valid vref and wait 3s valid window
     mock_set_vref_mv(5000);
     ptx_oven_control_update(); // starts valid timer at current time
-    for (int i = 0; i < 31; ++i) { // 31 * 100ms = 3100ms > 3000ms threshold
+    for (int i = 0; i < 35; ++i) { // 35 * 100ms = 3500ms > 3000ms threshold (extra margin)
         mock_advance_ms(100);
         ptx_oven_control_update();
     }

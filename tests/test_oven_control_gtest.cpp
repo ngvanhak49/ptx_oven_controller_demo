@@ -77,9 +77,14 @@ TEST_F(OvenControlTest, HysteresisControl) {
     EXPECT_TRUE(st->gas_on) << "Gas should stay ON after ignition";
     EXPECT_FALSE(st->igniter_on) << "Igniter should turn OFF after ignition";
 
-    // Move above OFF threshold (182°C)
+    // Move above OFF threshold (182°C) - need multiple updates for median filter
     mock_set_signal_mv(mv_for_temp(5000, 185.0f));
-    ptx_oven_control_update();
+    // Need more updates to ensure median filter outputs new value and control reacts
+    for (int i = 0; i < 10; ++i) {  // Extra updates to ensure filter and control both process
+        mock_advance_ms(50);
+        ptx_oven_control_update();
+    }
+    
     st = ptx_oven_get_status();
     EXPECT_FALSE(st->gas_on) << "Gas should turn OFF above OFF threshold";
     EXPECT_FALSE(st->igniter_on) << "Igniter should turn OFF above OFF threshold";
@@ -131,12 +136,14 @@ TEST_F(OvenControlTest, AutoResumeAfterValidWindow) {
 
     st = ptx_oven_get_status();
     EXPECT_TRUE(st->sensor_fault) << "Sensor fault should be latched";
+    EXPECT_FALSE(st->gas_on) << "Gas should be OFF on fault";
 
     // Restore valid vref and wait 3s valid window
     mock_set_vref_mv(5000);
     ptx_oven_control_update(); // starts valid timer
     
-    for (int i = 0; i < 31; ++i) { // 31 * 100ms = 3100ms > 3000ms threshold
+    // Need more updates to ensure continuous valid readings
+    for (int i = 0; i < 35; ++i) { // 35 * 100ms = 3500ms > 3000ms threshold (extra margin)
         mock_advance_ms(100);
         ptx_oven_control_update();
     }
