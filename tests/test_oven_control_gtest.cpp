@@ -85,13 +85,17 @@ TEST_F(OvenControlTest, HysteresisControl) {
 
     // Move above OFF threshold (182°C) - need to fill filter with new values
     mock_set_signal_mv(mv_for_temp(5000, 185.0f));
-    // Need to completely replace old values in median filter
-    for (int i = 0; i < 10; ++i) {  // Extra updates to ensure filter fully updates
+    // Need to completely replace old values in median filter (window size=5)
+    // After 5 updates, all old values should be replaced
+    for (int i = 0; i < 15; ++i) {  // Extra updates to ensure filter fully updates
         mock_advance_ms(50);
         ptx_oven_control_update();
     }
     
     st = ptx_oven_get_status();
+    // Debug: print actual temperature
+    printf("DEBUG: temperature_c = %.1f, gas_on = %d, state = %d\n", 
+           st->temperature_c, st->gas_on, st->state);
     EXPECT_FALSE(st->gas_on) << "Gas should turn OFF above OFF threshold";
     EXPECT_FALSE(st->igniter_on) << "Igniter should turn OFF above OFF threshold";
 }

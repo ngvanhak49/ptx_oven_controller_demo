@@ -111,15 +111,7 @@ static void ptx_apply_outputs(void) {
 static void ptx_update_heating(uint32_t now_ms) {
     const ptx_oven_config_t* cfg = ptx_oven_get_config();
     
-    /* Check if in lockout state */
-    if (pti_status.state == PTX_HEATING_STATE_LOCKOUT) {
-        pti_status.gas_on = false;
-        pti_status.igniter_on = false;
-        pti_status.ignition_lockout = true;
-        return; /* Require manual reset */
-    }
-    
-    /* Door and sensor faults override everything. */
+    /* Door and sensor faults override everything - force shutdown regardless of state */
     if (pti_status.door_open || pti_status.sensor_fault) {
         if (pti_status.gas_on || pti_status.igniter_on) {
             PTX_LOGF("shutdown: door open or sensor fault");
@@ -131,52 +123,47 @@ static void ptx_update_heating(uint32_t now_ms) {
         return;
     }
 
-    /* Handle purge state (after failed ignition) */
-    if (pti_status.state == PTX_HEATING_STATE_PURGING) {
-        if ((now_ms - pti_purge_start_ms) >= cfg->purge_time_ms) {
-            /* Purge complete, ready to retry */
-            pti_status.state = PTX_HEATING_STATE_IDLE;
-            PTX_LOGF("purge complete, attempt=%d", pti_ignition_attempt);
-        }
-        return;
-    }
-
-    /* Hysteresis control near expected temperature. */
+    /* Hysteresis thresholds */
     float temp_on = cfg->temp_target_c - cfg->temp_delta_c;
     float temp_off = cfg->temp_target_c + cfg->temp_delta_c;
     
-    if (pti_status.gas_on) {
-        /* Heating: turn off when reaching upper threshold. */
-        if (pti_status.temperature_c >= temp_off) {
-            pti_status.gas_on = false;
-            pti_status.igniter_on = false;
-            pti_status.state = PTX_HEATING_STATE_IDLE;
-            pti_ignition_attempt = 0; /* Successful heating, reset counter */
-            int temp_c_i = (int)(pti_status.temperature_c + 0.5f);
-            PTX_LOGF("heat off temp=%dC", temp_c_i);
-            return;
-        }
+    /* State machine logic */
+    switch (pti_status.state) {
+        case PTX_HEATING_STATE_IDLE:
+            /* Check if heating is needed */
+            if (pti_status.temperature_c <= temp_on) {
+                /* Start ignition sequence */
+                pti_ignition_attempt++;
+                pti_status.gas_on = true;
+                pti_status.igniter_on = true;
+                pti_status.state = PTX_HEATING_STATE_IGNITING;
+                pti_ignition_start_ms = now_ms;
+                pti_temp_at_ignition_start = pti_status.temperature_c;
+                int temp_c_i = (int)(pti_status.temperature_c + 0.5f);
+                PTX_LOGF("ignite start attempt=%d temp=%dC", pti_ignition_attempt, temp_c_i);
+            }
+            break;
 
-        /* Manage ignition phase. */
-        if (pti_status.state == PTX_HEATING_STATE_IGNITING) {
+        case PTX_HEATING_STATE_IGNITING:
+            /* Wait for ignition period to complete */
             if ((now_ms - pti_ignition_start_ms) >= cfg->ignition_duration_ms) {
-                /* Ignition period ended, check for flame (temperature rise) */
+                /* Ignition period ended, check for flame */
                 float temp_rise = pti_status.temperature_c - pti_temp_at_ignition_start;
 
 #if (PTX_FLAME_DETECT_ENABLED)
                 if (temp_rise > 5.0f) {
-                    /* Flame detected (temp increased), successful ignition */
+                    /* Flame detected - successful ignition */
                     pti_status.igniter_on = false;
                     pti_status.state = PTX_HEATING_STATE_HEATING;
-                    pti_ignition_attempt = 0; /* Success, reset counter */
+                    pti_ignition_attempt = 0;
                     PTX_LOGF("ignition success, temp_rise=%dC", (int)temp_rise);
                 } else {
-                    /* Failed ignition (no temp rise) */
+                    /* No flame detected - failed ignition */
                     pti_status.gas_on = false;
                     pti_status.igniter_on = false;
                     
                     if (pti_ignition_attempt >= cfg->max_ignition_attempts) {
-                        /* Max attempts reached, enter lockout */
+                        /* Max attempts reached - enter lockout */
                         pti_status.state = PTX_HEATING_STATE_LOCKOUT;
                         pti_status.ignition_lockout = true;
                         PTX_LOGF("ignition lockout after %d attempts", pti_ignition_attempt);
@@ -188,27 +175,53 @@ static void ptx_update_heating(uint32_t now_ms) {
                     }
                 }
 #else
-                /* Flame detection disabled; assume success */
+                /* Flame detection disabled - assume success */
                 pti_status.igniter_on = false;
                 pti_status.state = PTX_HEATING_STATE_HEATING;
-                pti_ignition_attempt = 0; /* Success, reset counter */
+                pti_ignition_attempt = 0;
                 PTX_LOGF("ignition assumed success (flame detect disabled)");
 #endif
             }
-        }
-        /* Else keep heating with gas ON (flame expected). */
-    } else {
-        /* Idle: start heating when below lower threshold. */
-        if (pti_status.temperature_c <= temp_on) {
-            pti_ignition_attempt++;                   /* Increment attempt counter */
-            pti_status.gas_on = true;                 /* open gas valve */
-            pti_status.igniter_on = true;             /* turn on igniter */
-            pti_status.state = PTX_HEATING_STATE_IGNITING;
-            pti_ignition_start_ms = now_ms;
-            pti_temp_at_ignition_start = pti_status.temperature_c; /* Record starting temp */
-            int temp_c_i = (int)(pti_status.temperature_c + 0.5f);
-            PTX_LOGF("ignite start attempt=%d temp=%dC", pti_ignition_attempt, temp_c_i);
-        }
+            /* Else keep igniter on and wait */
+            break;
+
+        case PTX_HEATING_STATE_HEATING:
+            /* Check if reached upper temperature threshold */
+            if (pti_status.temperature_c >= temp_off) {
+                pti_status.gas_on = false;
+                pti_status.igniter_on = false;
+                pti_status.state = PTX_HEATING_STATE_IDLE;
+                pti_ignition_attempt = 0; /* Successful heating cycle */
+                int temp_c_i = (int)(pti_status.temperature_c + 0.5f);
+                PTX_LOGF("heat off temp=%dC", temp_c_i);
+            }
+            /* Else keep heating */
+            break;
+
+        case PTX_HEATING_STATE_PURGING:
+            /* Wait for purge time to complete */
+            if ((now_ms - pti_purge_start_ms) >= cfg->purge_time_ms) {
+                pti_status.state = PTX_HEATING_STATE_IDLE;
+                PTX_LOGF("purge complete, attempt=%d", pti_ignition_attempt);
+            }
+            /* Else keep purging (gas and igniter already off) */
+            break;
+
+        case PTX_HEATING_STATE_LOCKOUT:
+            /* Require manual reset - no automatic recovery */
+            pti_status.gas_on = false;
+            pti_status.igniter_on = false;
+            pti_status.ignition_lockout = true;
+            /* Stay in lockout until ptx_oven_reset_ignition_lockout() called */
+            break;
+
+        default:
+            /* Invalid state - reset to IDLE */
+            PTX_LOGF("invalid state %d, reset to IDLE", (int)pti_status.state);
+            pti_status.state = PTX_HEATING_STATE_IDLE;
+            pti_status.gas_on = false;
+            pti_status.igniter_on = false;
+            break;
     }
 }
 
@@ -221,9 +234,9 @@ static void ptx_oven_run_log(uint32_t now_ms) {
     int vref_mV = (int)(pti_status.vref_volts * 1000.0f + 0.5f);
     int signal_mV = (int)(pti_status.signal_volts * 1000.0f + 0.5f);
     int temp_c_i = (int)(pti_status.temperature_c + 0.5f);
-    PTX_LOGF("vref=%dmV signal=%dmV temp=%dC door=%s state=%d gas=%d ign=%d attempt=%d lockout=%d",
-             vref_mV,
-             signal_mV,
+    
+    /* Main status log */
+    PTX_LOGF("temp=%dC door=%s state=%d gas=%d ign=%d attempt=%d lockout=%d",
              temp_c_i,
              pti_status.door_open ? "OPEN" : "CLOSED",
              (int)pti_status.state,
@@ -231,6 +244,14 @@ static void ptx_oven_run_log(uint32_t now_ms) {
              pti_status.igniter_on ? 1 : 0,
              pti_status.ignition_attempt,
              pti_status.ignition_lockout ? 1 : 0);
+    
+    /* Sensor and fault log */
+    PTX_LOGF("vref=%dmV signal=%dmV vref_fault=%d signal_fault=%d sensor_fault=%d",
+             vref_mV,
+             signal_mV,
+             pti_status.vref_fault ? 1 : 0,
+             pti_status.signal_fault ? 1 : 0,
+             pti_status.sensor_fault ? 1 : 0);
 }
 
 /* Public API */
