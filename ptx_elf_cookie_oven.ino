@@ -21,6 +21,7 @@ void setup() {
 // Immediate safety: cut GAS & IGNITER if door opens.
 void door_sensor_interrupt_handler(bool voltage_high)
 {
+  // TODO: add small filtering for stability if needed
   if (voltage_high) {
     set_output(GAS_VALVE, false);
     set_output(IGNITER, false);

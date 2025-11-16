@@ -83,7 +83,7 @@ static void ptx_update_heating(uint32_t now_ms) {
         return;
     }
 
-    /* Hysteresis control near 180C. */
+    /* Hysteresis control near expected temperature. */
     if (pti_status.gas_on) {
         /* Heating: turn off when reaching upper threshold. */
         if (pti_status.temperature_c >= PTX_TEMP_OFF_C) {

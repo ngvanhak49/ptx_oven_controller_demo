@@ -1,0 +1,25 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build tests
+        run: |
+          g++ -std=c++17 \
+            -I. -Itests/stubs \
+            tests/mocks/mock_api.cpp \
+            tests/mocks/mock_logging.cpp \
+            ptx_oven_control.cpp \
+            tests/test_oven_control.cpp \
+            -o tests/run_tests
+
+      - name: Run tests
+        run: ./tests/run_tests
