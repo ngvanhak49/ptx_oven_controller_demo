@@ -120,7 +120,11 @@ static int test_auto_resume_after_valid_window() {
 
     // Restore valid vref and wait 3s valid window
     mock_set_vref_mv(5000);
-    for (int i = 0; i < 30; ++i) { mock_advance_ms(100); ptx_oven_control_update(); }
+    ptx_oven_control_update(); // starts valid timer at current time
+    for (int i = 0; i < 31; ++i) { // 31 * 100ms = 3100ms > 3000ms threshold
+        mock_advance_ms(100);
+        ptx_oven_control_update();
+    }
 
     const ptx_oven_status_t* st = ptx_get_oven_status();
     ASSERT_FALSE("sensor fault cleared after 3s valid", st->sensor_fault);
