@@ -1,0 +1,85 @@
+{
+  "version": 1,
+  "author": "Anonymous maker",
+  "editor": "wokwi",
+  "parts": [
+    { "type": "wokwi-arduino-uno", "id": "uno", "top": -82.67, "left": -124, "attrs": {} },
+    {
+      "type": "wokwi-led",
+      "id": "led2",
+      "top": -195.6,
+      "left": 80.6,
+      "attrs": { "color": "green", "label": "Gas Valve" }
+    },
+    {
+      "type": "wokwi-led",
+      "id": "led1",
+      "top": -195.6,
+      "left": 32.6,
+      "attrs": { "color": "red", "label": "Igniter" }
+    },
+    {
+      "type": "wokwi-slide-potentiometer",
+      "id": "pot3",
+      "top": -110.2,
+      "left": 277.4,
+      "attrs": { "travelLength": "30" }
+    },
+    { "type": "wokwi-slide-switch", "id": "sw1", "top": -235.6, "left": -44.9, "attrs": {} },
+    {
+      "type": "wokwi-slide-potentiometer",
+      "id": "pot1",
+      "top": -23.8,
+      "left": 277.4,
+      "attrs": { "travelLength": "30" }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "r1",
+      "top": 110.4,
+      "left": 229.85,
+      "rotate": 90,
+      "attrs": { "value": "1000" }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "r2",
+      "top": 157.55,
+      "left": 163.2,
+      "attrs": { "value": "2000" }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "r3",
+      "top": -158.4,
+      "left": -86.95,
+      "rotate": 90,
+      "attrs": { "value": "1000" }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "r4",
+      "top": -158.4,
+      "left": -29.35,
+      "rotate": 90,
+      "attrs": { "value": "1000" }
+    }
+  ],
+  "connections": [
+    [ "pot3:SIG", "uno:A0", "green", [ "h-31.54", "v182.05", "h-103.32" ] ],
+    [ "pot1:SIG", "r1:1", "green", [ "h0" ] ],
+    [ "uno:2", "led2:A", "green", [ "v0" ] ],
+    [ "uno:7", "led1:A", "green", [ "v0" ] ],
+    [ "uno:GND.1", "led2:C", "black", [ "v-22.33", "h104.5" ] ],
+    [ "led1:C", "uno:GND.1", "black", [ "v57.6", "h0.4" ] ],
+    [ "uno:11", "sw1:2", "green", [ "v-31.93", "h-39.2" ] ],
+    [ "r4:1", "sw1:3", "green", [ "h0", "v-9.6", "h-19.2" ] ],
+    [ "r3:1", "sw1:1", "green", [ "h0", "v-9.6", "h9.6" ] ],
+    [ "r3:2", "uno:GND.1", "black", [ "h0", "v37.2", "h48" ] ],
+    [ "r4:2", "uno:5V", "red", [ "h0", "v8.4", "h-153.6", "v249.6", "h192" ] ],
+    [ "r1:2", "r2:2", "green", [ "h0", "v18" ] ],
+    [ "uno:GND.2", "r2:1", "black", [ "v0" ] ],
+    [ "uno:AREF", "r1:2", "green", [ "v-22.33", "h-116.4", "v278.4", "h393.6" ] ]
+  ],
+  "dependencies": {}
+}
