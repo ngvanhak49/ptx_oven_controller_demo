@@ -1,7 +1,7 @@
 /**
  * @file ptx_oven_control.cpp
  * @brief Control logic per requirements:
- *        - Maintain near 180C using hysteresis (ON at 178C, OFF at 182C).
+ *        - Maintain near 180C using hysteresis (ON at 175C, OFF at 185C).
  *        - Door open overrides everything -> gas OFF, igniter OFF immediately.
  *        - Igniter ON only first 5s after gas turns ON.
  *        - vref must be 4.5–5.5V; signal must be within 10–90% vref; else fault -> shutdown.
@@ -70,6 +70,7 @@ static void ptx_eval_sensor_faults_with_timing(uint32_t now_ms, float vref_mv, f
     } else {
         /* Readings are valid; clear out-of-range window */
         pti_out_of_range_since_ms = 0;
+        
         if (pti_status.sensor_fault) {
             /* If fault was latched, require continuous validity before auto-resume */
             if (pti_valid_since_ms == 0) {
@@ -98,6 +99,15 @@ static float ptx_compute_temperature(float vref_mv, float signal_mv) {
     return -10.0f + ((signal_mv - low) / (0.80f * vref_mv)) * 310.0f;
 }
 
+static int ptx_temp_to_int(float temp_c) {
+    /* Proper rounding for both positive and negative numbers */
+    if (temp_c >= 0.0f) {
+        return (int)(temp_c + 0.5f);
+    } else {
+        return (int)(temp_c - 0.5f);
+    }
+}
+
 static void ptx_apply_outputs(void) {
     ptx_actuator_set_gas(pti_status.gas_on);
     ptx_actuator_set_igniter(pti_status.igniter_on);
@@ -123,6 +133,14 @@ static void ptx_update_heating(uint32_t now_ms) {
         return;
     }
 
+    /* Do not allow ignition until system has been running for at least 2 seconds (sensor stabilization) */
+    if (now_ms < 2000) {
+        pti_status.gas_on = false;
+        pti_status.igniter_on = false;
+        pti_status.state = PTX_HEATING_STATE_IDLE;
+        return;
+    }
+
     /* Hysteresis thresholds */
     float temp_on = cfg->temp_target_c - cfg->temp_delta_c;
     float temp_off = cfg->temp_target_c + cfg->temp_delta_c;
@@ -139,8 +157,8 @@ static void ptx_update_heating(uint32_t now_ms) {
                 pti_status.state = PTX_HEATING_STATE_IGNITING;
                 pti_ignition_start_ms = now_ms;
                 pti_temp_at_ignition_start = pti_status.temperature_c;
-                int temp_c_i = (int)(pti_status.temperature_c + 0.5f);
-                PTX_LOGF("ignite start attempt=%d temp=%dC", pti_ignition_attempt, temp_c_i);
+                PTX_LOGF("ignite start attempt=%d temp=%dC", pti_ignition_attempt, 
+                         ptx_temp_to_int(pti_status.temperature_c));
             }
             break;
 
@@ -156,7 +174,7 @@ static void ptx_update_heating(uint32_t now_ms) {
                     pti_status.igniter_on = false;
                     pti_status.state = PTX_HEATING_STATE_HEATING;
                     pti_ignition_attempt = 0;
-                    PTX_LOGF("ignition success, temp_rise=%dC", (int)temp_rise);
+                    PTX_LOGF("ignition success, temp_rise=%dC", ptx_temp_to_int(temp_rise));
                 } else {
                     /* No flame detected - failed ignition */
                     pti_status.gas_on = false;
@@ -192,8 +210,7 @@ static void ptx_update_heating(uint32_t now_ms) {
                 pti_status.igniter_on = false;
                 pti_status.state = PTX_HEATING_STATE_IDLE;
                 pti_ignition_attempt = 0; /* Successful heating cycle */
-                int temp_c_i = (int)(pti_status.temperature_c + 0.5f);
-                PTX_LOGF("heat off temp=%dC", temp_c_i);
+                PTX_LOGF("heat off temp=%dC", ptx_temp_to_int(pti_status.temperature_c));
             }
             /* Else keep heating */
             break;
@@ -233,11 +250,10 @@ static void ptx_oven_run_log(uint32_t now_ms) {
 
     int vref_mV = (int)(pti_status.vref_volts * 1000.0f + 0.5f);
     int signal_mV = (int)(pti_status.signal_volts * 1000.0f + 0.5f);
-    int temp_c_i = (int)(pti_status.temperature_c + 0.5f);
     
     /* Main status log */
     PTX_LOGF("temp=%dC door=%s state=%d gas=%d ign=%d attempt=%d lockout=%d",
-             temp_c_i,
+             ptx_temp_to_int(pti_status.temperature_c),
              pti_status.door_open ? "OPEN" : "CLOSED",
              (int)pti_status.state,
              pti_status.gas_on ? 1 : 0,
@@ -278,6 +294,8 @@ void ptx_oven_control_init(void) {
     pti_ignition_attempt = 0;
     pti_purge_start_ms = 0;
     pti_temp_at_ignition_start = 0.0f;
+    pti_out_of_range_since_ms = 0;
+    pti_valid_since_ms = 0;
     
     /* Initialize actuators and sensor filter */
     ptx_actuator_init();

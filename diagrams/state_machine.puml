@@ -1,0 +1,43 @@
+@startuml PTX Oven State Machine (Flame Detection Disabled)
+
+[*] --> IDLE : Init / Boot
+
+state IDLE {
+  IDLE : Waiting for heating needed
+  IDLE : Gas OFF, Igniter OFF
+}
+
+state IGNITING {
+  IGNITING : Gas ON, Igniter ON
+  IGNITING : Duration: 5 seconds
+}
+
+state HEATING {
+  HEATING : Gas ON, Igniter OFF
+  HEATING : Maintaining temperature
+}
+
+note right of IGNITING
+  **Flame Detection = OFF**
+  Always assume ignition success
+  after 5 seconds
+end note
+
+IDLE --> IGNITING : temp ≤ 175°C\nAND no faults\nAND uptime > 2s
+
+IGNITING --> HEATING : 5s elapsed\n(assume success)
+
+HEATING --> IDLE : temp ≥ 185°C
+
+note right of IDLE
+  **Safety overrides:**
+  - Door open → immediate shutdown
+  - Sensor fault → immediate shutdown
+  All states → IDLE
+end note
+
+IDLE --> IDLE : Door open / Sensor fault
+IGNITING --> IDLE : Door open / Sensor fault\n→ shutdown
+HEATING --> IDLE : Door open / Sensor fault\n→ shutdown
+
+@enduml

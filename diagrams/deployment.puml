@@ -1,0 +1,63 @@
+@startuml
+
+node "Arduino MCU" {
+    
+    component "sketch.ino" as APP
+    
+    package "Control Layer" {
+        component "ptx_oven_control" as CTRL
+        component "ptx_sensor_filter" as SENS
+        component "ptx_actuator" as ACT
+        component "ptx_oven_config" as CFG
+        component "ptx_logging" as LOG
+    }
+    
+    package "Hardware Abstraction Layer" {
+        component "api.cpp" as API
+    }
+}
+
+cloud "Hardware" {
+    interface "PT100 Sensor" as SENSOR
+    interface "Door Switch" as DOOR
+    interface "Gas Valve" as GAS
+    interface "Igniter" as IGN
+}
+
+APP --> CTRL
+CTRL --> SENS
+CTRL --> ACT
+CTRL --> CFG
+CTRL --> LOG
+
+SENS --> API
+ACT --> API
+LOG --> API
+
+API --> SENSOR
+API --> DOOR
+API --> GAS
+API --> IGN
+
+note right of SENSOR
+PT100 Sensor
+Analog ADC Pin A0
+Range 0-5V
+end note
+
+note right of DOOR
+Door Switch
+GPIO Input Pin D2
+end note
+
+note left of GAS
+Gas Valve
+GPIO Output Pin D3
+end note
+
+note left of IGN
+Igniter
+GPIO Output Pin D4
+end note
+
+@enduml

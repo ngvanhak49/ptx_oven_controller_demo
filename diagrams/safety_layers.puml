@@ -1,0 +1,110 @@
+@startuml PTX Oven Controller - Multi-Layer Fault Detection
+!theme plain
+skinparam backgroundColor #FEFEFE
+skinparam activity {
+    BackgroundColor #E3F2FD
+    BorderColor #1976D2
+    DiamondBackgroundColor #FFF3E0
+    DiamondBorderColor #F57C00
+    StartColor #4CAF50
+    EndColor #F44336
+    BarColor #9E9E9E
+}
+
+start
+
+:Sensor Readings;
+note right
+  **Input:**
+  - vref (reference voltage)
+  - signal (PT100 output)
+  - door_state (open/closed)
+end note
+
+partition "Layer 1: Vref Validation" {
+    if (Vref in\n4.5-5.5V?) then (NO)
+        :Set vref_fault = 1;
+        note right: Reference voltage out of spec
+    else (YES)
+        :Set vref_fault = 0;
+    endif
+}
+
+partition "Layer 2: Signal Validation" {
+    if (Signal in\n10-90% vref?) then (NO)
+        :Set signal_fault = 1;
+        note right: Sensor signal out of range
+    else (YES)
+        :Set signal_fault = 0;
+    endif
+}
+
+partition "Layer 3: Persistence Check" {
+    if (vref_fault OR\nsignal_fault?) then (YES)
+        if (Persist > 1000ms?) then (YES)
+            :Latch sensor_fault = 1;
+            note right
+                **Fault confirmed**
+                Waited 1000ms to avoid
+                transient false positives
+            end note
+            :Immediate Shutdown;
+            #FFCDD2:Gas OFF\nIgniter OFF\nState → IDLE|
+            stop
+        else (NO)
+            :Continue monitoring;
+            note right: Wait for persistence window
+        endif
+    else (NO)
+        :Clear fault flags;
+    endif
+}
+
+partition "Layer 4: Door Safety" {
+    if (Door\nClosed?) then (NO)
+        :Immediate Shutdown;
+        #FFCDD2:Gas OFF\nIgniter OFF\nState → IDLE|
+        note right
+            **Highest priority**
+            Door open = instant stop
+            No delay
+        end note
+        stop
+    else (YES)
+        :Door OK;
+    endif
+}
+
+partition "Layer 5: Startup Safety" {
+    if (Uptime > 2s?) then (NO)
+        :Keep outputs OFF;
+        note right
+            **Sensor stabilization**
+            Prevent ignition before
+            sensor is stable
+        end note
+        stop
+    else (YES)
+        :Startup complete;
+    endif
+}
+
+:Continue Heating;
+#C8E6C9:System operates normally\nState machine active|
+
+stop
+
+legend right
+    **Safety Priority (highest to lowest):**
+    1. Door open → Instant shutdown
+    2. Sensor fault → Shutdown after 1s
+    3. Startup delay → No ignition < 2s
+    4. State machine logic
+    
+    **Fault Recovery:**
+    - Sensor fault: Auto-resume after 3s valid readings
+    - Door open: Resume when door closed
+    - Startup delay: Automatic after 2s uptime
+end legend
+
+@enduml

@@ -1,0 +1,104 @@
+@startuml PTX Oven Controller - Component Architecture
+!theme plain
+skinparam componentStyle rectangle
+skinparam backgroundColor #FEFEFE
+skinparam component {
+    BackgroundColor<<core>> #E3F2FD
+    BackgroundColor<<sensor>> #FFF3E0
+    BackgroundColor<<actuator>> #E8F5E9
+    BackgroundColor<<config>> #F3E5F5
+    BackgroundColor<<hal>> #FFEBEE
+    BackgroundColor<<log>> #E0F7FA
+    BorderColor #424242
+    FontSize 11
+}
+
+package "Control Layer" {
+    component "ptx_oven_control" <<core>> as CTRL {
+        [ptx_oven_control_init()]
+        [ptx_oven_control_update()]
+        [ptx_oven_get_status()]
+        [ptx_oven_set_door_state()]
+        [ptx_oven_reset_ignition_lockout()]
+        --
+        [ptx_update_heating()]
+        [ptx_eval_sensor_faults_with_timing()]
+        [ptx_compute_temperature()]
+    }
+}
+
+package "Sensor Processing" {
+    component "ptx_sensor_filter" <<sensor>> as FILTER {
+        [ptx_sensor_filter_init(window_size)]
+        [ptx_sensor_filter_read_and_update()]
+        --
+        [median_filter_vref[]]
+        [median_filter_signal[]]
+    }
+}
+
+package "Output Control" {
+    component "ptx_actuator" <<actuator>> as ACT {
+        [ptx_actuator_init()]
+        [ptx_actuator_set_gas(on)]
+        [ptx_actuator_set_igniter(on)]
+        [ptx_actuator_get_gas_state()]
+        [ptx_actuator_get_igniter_state()]
+    }
+}
+
+package "Configuration" {
+    component "ptx_oven_config" <<config>> as CFG {
+        [ptx_oven_get_config()]
+        [ptx_oven_set_config()]
+        [ptx_oven_reset_config_to_defaults()]
+        [Individual getters/setters]
+        --
+        [ptx_oven_config_t]
+    }
+}
+
+package "Hardware Abstraction" {
+    component "api" <<hal>> as API {
+        [read_voltage(pin)]
+        [read_input(pin)]
+        [set_output(pin, value)]
+        [read_output(pin)]
+        [millis()]
+    }
+}
+
+package "Logging" {
+    component "ptx_logging" <<log>> as LOG {
+        [PTX_LOG(msg)]
+        [PTX_LOGF(format, ...)]
+        [ptx_log_init()]
+    }
+}
+
+CTRL --> FILTER : reads filtered\nsensor data
+CTRL --> ACT : controls gas\nand igniter
+CTRL --> CFG : reads runtime\nparameters
+CTRL --> LOG : writes status\nand faults
+
+FILTER --> API : reads analog\nvoltages
+ACT --> API : controls\ndigital outputs
+
+note right of CTRL
+  **Core Control Logic**
+  - State machine (3 states)
+  - Fault detection with timing
+  - Temperature computation
+  - Hysteresis control
+end note
+
+note bottom of CFG
+  **Validated Parameters**
+  All setters enforce ranges:
+  - temp_target_c: 0-300°C
+  - ignition_duration_ms: 1000-30000
+  - sensor_fault_window_ms: 100-10000
+  - etc.
+end note
+
+@enduml

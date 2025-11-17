@@ -38,7 +38,7 @@ void ptx_oven_reset_config_to_defaults(void) {
     pti_oven_config.vref_min_v             = 4.5f;
     pti_oven_config.vref_max_v             = 5.5f;
     pti_oven_config.temp_target_c          = 180.0f;
-    pti_oven_config.temp_delta_c           = 2.0f;
+    pti_oven_config.temp_delta_c           = 5.0f;
     pti_oven_config.max_ignition_attempts  = 3U;
     pti_oven_config.purge_time_ms          = 2500U;
     pti_oven_config.flame_detect_temp_rise_c = 2.0f;
@@ -46,7 +46,9 @@ void ptx_oven_reset_config_to_defaults(void) {
 
 /* Individual parameter setters */
 void ptx_oven_set_ignition_duration_ms(uint32_t duration_ms) {
-    pti_oven_config.ignition_duration_ms = duration_ms;
+    if (duration_ms >= 1000 && duration_ms <= 30000) {
+        pti_oven_config.ignition_duration_ms = duration_ms;
+    }
 }
 
 uint32_t ptx_oven_get_ignition_duration_ms(void) {
@@ -54,7 +56,9 @@ uint32_t ptx_oven_get_ignition_duration_ms(void) {
 }
 
 void ptx_oven_set_periodic_log_ms(uint32_t interval_ms) {
-    pti_oven_config.periodic_log_ms = interval_ms;
+    if (interval_ms >= 100 && interval_ms <= 60000) {
+        pti_oven_config.periodic_log_ms = interval_ms;
+    }
 }
 
 uint32_t ptx_oven_get_periodic_log_ms(void) {
@@ -62,7 +66,9 @@ uint32_t ptx_oven_get_periodic_log_ms(void) {
 }
 
 void ptx_oven_set_sensor_fault_window_ms(uint32_t window_ms) {
-    pti_oven_config.sensor_fault_window_ms = window_ms;
+    if (window_ms >= 100 && window_ms <= 10000) {
+        pti_oven_config.sensor_fault_window_ms = window_ms;
+    }
 }
 
 uint32_t ptx_oven_get_sensor_fault_window_ms(void) {
@@ -70,7 +76,9 @@ uint32_t ptx_oven_get_sensor_fault_window_ms(void) {
 }
 
 void ptx_oven_set_auto_resume_delay_ms(uint32_t delay_ms) {
-    pti_oven_config.auto_resume_delay_ms = delay_ms;
+    if (delay_ms >= 1000 && delay_ms <= 30000) {
+        pti_oven_config.auto_resume_delay_ms = delay_ms;
+    }
 }
 
 uint32_t ptx_oven_get_auto_resume_delay_ms(void) {
@@ -78,8 +86,10 @@ uint32_t ptx_oven_get_auto_resume_delay_ms(void) {
 }
 
 void ptx_oven_set_vref_range_v(float min_v, float max_v) {
-    pti_oven_config.vref_min_v = min_v;
-    pti_oven_config.vref_max_v = max_v;
+    if (min_v >= 0.0f && min_v <= 10.0f && max_v >= 0.0f && max_v <= 10.0f && min_v < max_v) {
+        pti_oven_config.vref_min_v = min_v;
+        pti_oven_config.vref_max_v = max_v;
+    }
 }
 
 float ptx_oven_get_vref_min_v(void) {
@@ -91,7 +101,9 @@ float ptx_oven_get_vref_max_v(void) {
 }
 
 void ptx_oven_set_temp_target_c(float target_c) {
-    pti_oven_config.temp_target_c = target_c;
+    if (target_c >= 0.0f && target_c <= 300.0f) {
+        pti_oven_config.temp_target_c = target_c;
+    }
 }
 
 float ptx_oven_get_temp_target_c(void) {
@@ -99,7 +111,9 @@ float ptx_oven_get_temp_target_c(void) {
 }
 
 void ptx_oven_set_temp_delta_c(float delta_c) {
-    pti_oven_config.temp_delta_c = delta_c;
+    if (delta_c >= 0.1f && delta_c <= 50.0f) {
+        pti_oven_config.temp_delta_c = delta_c;
+    }
 }
 
 float ptx_oven_get_temp_delta_c(void) {
@@ -107,7 +121,7 @@ float ptx_oven_get_temp_delta_c(void) {
 }
 
 void ptx_oven_set_max_ignition_attempts(uint8_t attempts) {
-    if (attempts > 0 && attempts <= 5) {
+    if (attempts >= 1 && attempts <= 10) {
         pti_oven_config.max_ignition_attempts = attempts;
     }
 }
@@ -117,7 +131,9 @@ uint8_t ptx_oven_get_max_ignition_attempts(void) {
 }
 
 void ptx_oven_set_purge_time_ms(uint32_t purge_ms) {
-    pti_oven_config.purge_time_ms = purge_ms;
+    if (purge_ms >= 1000 && purge_ms <= 10000) {
+        pti_oven_config.purge_time_ms = purge_ms;
+    }
 }
 
 uint32_t ptx_oven_get_purge_time_ms(void) {

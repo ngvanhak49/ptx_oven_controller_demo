@@ -1,0 +1,47 @@
+@startuml PTX Oven Architecture
+
+!define RECTANGLE class
+
+package "Hardware Layer" {
+  component [Temperature Sensor\nAnalog Input] as Sensor
+  component [Door Switch\nDigital Input] as Door
+  component [Gas Valve\nDigital Output] as Gas
+  component [Igniter\nDigital Output] as Igniter
+}
+
+package "HAL - api.h/cpp" {
+  component [Hardware Abstraction\nread_voltage\nread_input\nset_output\nread_output] as API
+}
+
+package "Sensor Processing" {
+  component [Median Filter\nptx_sensor_filter] as Filter
+  component [Fault Detection\nTimed Latching] as Fault
+}
+
+package "Control Logic" {
+  component [State Machine\n6 States] as SM
+  component [Runtime Config\nptx_oven_config] as Config
+}
+
+package "Output Control" {
+  component [Actuator Wrapper\nptx_actuator] as Actuator
+}
+
+package "Logging" {
+  component [PTX Logging\nTimestamped] as Log
+}
+
+Sensor --> API
+Door --> API
+API --> Filter
+Filter --> Fault
+Fault --> SM
+Config --> SM
+SM --> Actuator
+Actuator --> API
+API --> Gas
+API --> Igniter
+SM --> Log
+Fault --> Log
+
+@enduml

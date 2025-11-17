@@ -1,0 +1,55 @@
+@startuml PTX Oven Control Flow (Flame Detection Disabled)
+
+start
+
+:Read & Filter Sensors\nvref, signal;
+
+:Evaluate Faults\nwith timing window;
+
+:Check Door State;
+
+:Compute Temperature;
+
+if (Door open OR\nSensor fault?) then (yes)
+  :Shutdown:\ngas=OFF, ign=OFF\nstate=IDLE;
+  :Apply Outputs;
+  :Periodic Logging;
+  stop
+endif
+
+if (uptime < 2s?) then (yes)
+  :Keep OFF\nsensor stabilization;
+  :Apply Outputs;
+  :Periodic Logging;
+  stop
+endif
+
+:State Machine Logic;
+
+partition "State Machine (3 States)" {
+  if (Current State?) then (IDLE)
+    if (temp ≤ 175°C?) then (yes)
+      :Start Ignition\ngas=ON, ign=ON\nstate=IGNITING;
+    endif
+  else if (IGNITING)
+    if (5s elapsed?) then (yes)
+      note right
+        **Flame Detection = OFF**
+        Always assume success
+      end note
+      :ign=OFF\nstate=HEATING;
+    endif
+  else if (HEATING)
+    if (temp ≥ 185°C?) then (yes)
+      :gas=OFF, ign=OFF\nstate=IDLE;
+    endif
+  endif
+}
+
+:Apply Outputs;
+
+:Periodic Logging;
+
+stop
+
+@enduml

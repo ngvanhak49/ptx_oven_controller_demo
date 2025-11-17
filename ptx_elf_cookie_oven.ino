@@ -12,8 +12,8 @@ Then check `notes.md`.
 
 void setup() {
   ptx_log_init();
-  setup_api();
   ptx_oven_control_init();
+  setup_api();
 
   PTX_LOGF("Elf oven 2000 starting up.");
 }

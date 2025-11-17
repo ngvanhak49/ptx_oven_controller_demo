@@ -64,7 +64,7 @@ TEST_F(OvenControlTest, IgnitionTiming) {
 TEST_F(OvenControlTest, HysteresisControl) {
     mock_set_vref_mv(5000);
 
-    // Start heating (below ON threshold: 178°C)
+    // Start heating (below ON threshold: 175°C)
     mock_set_signal_mv(mv_for_temp(5000, 160.0f));
     
     // Fill median filter buffer first (need 5 samples)

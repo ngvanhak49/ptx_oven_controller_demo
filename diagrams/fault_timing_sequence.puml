@@ -1,0 +1,117 @@
+@startuml PTX Oven Controller - Sensor Fault Detection Timing
+!theme plain
+skinparam backgroundColor #FEFEFE
+skinparam sequence {
+    ParticipantBackgroundColor #E3F2FD
+    ParticipantBorderColor #1976D2
+    ActorBackgroundColor #FFF3E0
+    ActorBorderColor #F57C00
+    ArrowColor #424242
+    LifeLineBorderColor #757575
+    LifeLineBackgroundColor #EEEEEE
+}
+
+participant "Sensor" as Sensor
+participant "Median Filter" as Filter
+participant "Fault Logic" as Fault
+participant "Control State\nMachine" as Control
+
+== Normal Operation ==
+note over Sensor
+  Normal readings from 
+  PT100 temperature sensor
+end note
+
+Sensor -> Filter: vref=5000mV\nsignal=1500mV
+Filter -> Fault: Filtered values
+Fault -> Control: **vref_fault=0**\n**signal_fault=0**\n**sensor_fault=0**
+note right of Control
+  System operates normally
+  Heating continues
+end note
+
+== Fault Occurs ==
+note over Sensor #FFCDD2
+  Sensor disconnected or
+  signal goes out of range
+end note
+
+Sensor -> Filter: vref=5000mV\nsignal=0mV (bad!)
+Filter -> Fault: Filtered: signal out of range
+note over Fault #FFF9C4
+  **Start timer**
+  pti_out_of_range_since_ms = now
+end note
+Fault -> Control: vref_fault=0\n**signal_fault=1** ⚠️\nsensor_fault=0
+note right of Control
+  Fault detected but NOT latched
+  System continues for now
+end note
+
+== Fault Persists - Wait 1000ms ==
+|||
+note over Sensor,Fault
+  1000ms elapsed (sensor_fault_window_ms)
+  Fault still present...
+end note
+|||
+
+Sensor -> Filter: vref=5000mV\nsignal=0mV (still bad!)
+Filter -> Fault: Signal still out of range
+note over Fault #FFCDD2
+  **Elapsed > 1000ms**
+  **LATCH FAULT**
+  sensor_fault = 1
+end note
+Fault -> Control: **sensor_fault=1** 🔴\n→ **SHUTDOWN**
+note right of Control #FFCDD2
+  **FORCED SHUTDOWN:**
+  - Gas valve OFF
+  - Igniter OFF
+  - State → IDLE
+  - Wait for recovery
+end note
+
+== Sensor Recovers ==
+note over Sensor #C8E6C9
+  Sensor reconnected
+  Signal back to normal
+end note
+
+Sensor -> Filter: vref=5000mV\nsignal=1500mV (good!)
+Filter -> Fault: Signal in valid range
+note over Fault #FFF9C4
+  **Start valid timer**
+  pti_valid_since_ms = now
+  Fault still latched (need 3s continuous valid)
+end note
+Fault -> Control: vref_fault=0\nsignal_fault=0\n**sensor_fault=1** (still latched)
+note right of Control
+  System remains shut down
+  Waiting for auto-resume window
+end note
+
+== Continuous Valid Readings - Wait 3000ms ==
+|||
+note over Sensor,Fault
+  3000ms elapsed (auto_resume_delay_ms)
+  Readings continuously valid...
+end note
+|||
+
+Sensor -> Filter: vref=5000mV\nsignal=1500mV (continuous valid)
+Filter -> Fault: Signal still valid
+note over Fault #C8E6C9
+  **Elapsed ≥ 3000ms**
+  **CLEAR FAULT**
+  sensor_fault = 0
+end note
+Fault -> Control: vref_fault=0\nsignal_fault=0\n**sensor_fault=0** ✅\n→ **AUTO-RESUME**
+note right of Control #C8E6C9
+  **AUTO-RESUME:**
+  - Fault cleared
+  - System can resume heating
+  - State machine continues
+end note
+
+@enduml

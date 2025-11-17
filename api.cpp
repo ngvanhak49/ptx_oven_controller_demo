@@ -14,7 +14,7 @@ void setup_api()
 {
   pinMode(2, OUTPUT); // digital pin 2
   pinMode(7, OUTPUT); // digital pin 7
-  pinMode(3, INPUT_PULLUP); // door sensor on pin 3: use internal pull-up; connect switch to GND
+  pinMode(3, INPUT); // door sensor on pin 3; connect switch to GND
 
   door_sensor_interrupt_handler(digitalRead(3) == HIGH); // we may not get an interrupt at startup, so we call the handler manually
   attachInterrupt(digitalPinToInterrupt(3), door_sensor_IRQ_handler, CHANGE); // digital pin 3
