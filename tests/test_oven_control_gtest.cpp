@@ -31,6 +31,9 @@ TEST_F(OvenControlTest, DoorOpenShutdown) {
     mock_set_vref_mv(5000);
     mock_set_signal_mv(mv_for_temp(5000, 160.0f)); // below ON threshold
 
+    // Advance past 2s startup delay
+    mock_advance_time_ms(2500);
+    
     ptx_oven_control_update();
     const ptx_oven_status_t* st = ptx_oven_get_status();
     EXPECT_TRUE(st->gas_on) << "Gas should start ON when temp below threshold";
@@ -50,6 +53,9 @@ TEST_F(OvenControlTest, IgnitionTiming) {
     mock_set_vref_mv(5000);
     mock_set_signal_mv(mv_for_temp(5000, 160.0f));
 
+    // Advance past 2s startup delay
+    mock_advance_time_ms(2500);
+    
     ptx_oven_control_update();
     const ptx_oven_status_t* st = ptx_oven_get_status();
     EXPECT_TRUE(st->igniter_on) << "Igniter should be ON during ignition phase";
@@ -66,6 +72,9 @@ TEST_F(OvenControlTest, HysteresisControl) {
 
     // Start heating (below ON threshold: 175°C)
     mock_set_signal_mv(mv_for_temp(5000, 160.0f));
+    
+    // Advance past 2s startup delay
+    mock_advance_time_ms(2500);
     
     // Fill median filter buffer first (need 5 samples)
     for (int i = 0; i < 5; ++i) {
@@ -103,6 +112,9 @@ TEST_F(OvenControlTest, HysteresisControl) {
 TEST_F(OvenControlTest, SensorFaultTimedDetection) {
     mock_set_vref_mv(5000);
     mock_set_signal_mv(mv_for_temp(5000, 160.0f));
+
+    // Advance past 2s startup delay
+    mock_advance_time_ms(2500);
 
     // Start heating
     ptx_oven_control_update();
@@ -172,6 +184,9 @@ TEST_F(OvenControlTest, IgnitionRetryAfterFailure) {
     mock_set_vref_mv(5000);
     mock_set_signal_mv(mv_for_temp(5000, 160.0f));
 
+    // Advance past 2s startup delay
+    mock_advance_time_ms(2500);
+
     // Start ignition
     ptx_oven_control_update();
     const ptx_oven_status_t* st = ptx_oven_get_status();
@@ -195,6 +210,9 @@ TEST_F(OvenControlTest, IgnitionLockoutAfterMaxAttempts) {
     mock_set_vref_mv(5000);
     mock_set_signal_mv(mv_for_temp(5000, 160.0f));
 
+    // Advance past 2s startup delay
+    mock_advance_time_ms(2500);
+
     // Start and complete ignition successfully
     ptx_oven_control_update();
     const ptx_oven_status_t* st = ptx_oven_get_status();
@@ -215,6 +233,9 @@ TEST_F(OvenControlTest, ManualResetFromLockout) {
     // This test verifies the reset function works (would be used in real scenario)
     mock_set_vref_mv(5000);
     mock_set_signal_mv(mv_for_temp(5000, 160.0f));
+
+    // Advance past 2s startup delay
+    mock_advance_time_ms(2500);
 
     // Normal operation should work fine
     ptx_oven_control_update();
